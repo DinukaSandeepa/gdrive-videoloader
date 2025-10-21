@@ -154,6 +154,66 @@ def try_uc_direct_url(session: requests.Session, file_id: str, verbose: bool = F
     return None
 
 
+def parse_content_disposition_filename(headers: dict) -> Optional[str]:
+    """Extract a filename from Content-Disposition headers, RFC 5987 aware.
+
+    Supports filename*=UTF-8''... and filename="...".
+    """
+    cd = headers.get('Content-Disposition') or headers.get('content-disposition')
+    if not cd:
+        return None
+    # Try RFC 5987 filename*
+    m_star = re.search(r"filename\*\s*=\s*([^']*)''([^;]+)", cd, flags=re.IGNORECASE)
+    if m_star:
+        enc = (m_star.group(1) or 'UTF-8').upper()
+        val = unquote(m_star.group(2))
+        try:
+            return val.encode('latin1').decode(enc, errors='ignore') if enc != 'UTF-8' else val
+        except Exception:
+            return val
+    # Try simple filename="..."
+    m = re.search(r'filename\s*=\s*"([^"]+)"', cd, flags=re.IGNORECASE)
+    if m:
+        return m.group(1)
+    # Or filename=without-quotes
+    m2 = re.search(r'filename\s*=\s*([^;]+)', cd, flags=re.IGNORECASE)
+    if m2:
+        return m2.group(1).strip()
+    return None
+
+
+def head_filename(session: requests.Session, url: str, verbose: bool = False) -> Optional[str]:
+    """Attempt to fetch the suggested filename from response headers using HEAD (or fallback GET)."""
+    try:
+        resp = session.head(url, allow_redirects=True)
+        name = parse_content_disposition_filename(resp.headers)
+        if name:
+            if verbose:
+                print(f"[INFO] Filename from HEAD: {name}")
+            return name
+        # Some endpoints don't support HEAD; try a lightweight GET
+        resp = session.get(url, stream=True)
+        try:
+            name = parse_content_disposition_filename(resp.headers)
+            if name:
+                if verbose:
+                    print(f"[INFO] Filename from GET headers: {name}")
+                return name
+        finally:
+            resp.close()
+    except requests.RequestException:
+        return None
+    return None
+
+
+def sanitize_filename(name: str) -> str:
+    invalid = '<>:"/\\|?*'
+    for ch in invalid:
+        name = name.replace(ch, '_')
+    # Trim trailing dots/spaces which Windows disallows
+    return name.strip().rstrip('. ')
+
+
 def extract_streams(pr: dict) -> Tuple[Optional[str], list, list, list]:
     """Return (title, progressive_formats, adaptive_videos, adaptive_audios)."""
     pr_title = pr.get('videoDetails', {}).get('title') if isinstance(pr, dict) else None
@@ -579,15 +639,22 @@ if __name__ == "__main__":
 
     # Determine final filename if not provided earlier
     if not out_name:
-        base = video_title if video_title else args.video_id
-        def sanitize_name(name: str) -> str:
-            invalid = '<>:"/\\|?*'
-            for ch in invalid:
-                name = name.replace(ch, '_')
-            return name.strip() or 'video'
-        base = sanitize_name(base)
-        ext = container_hint or 'mp4'
-        out_name = f"{base}.{ext}"
+        # Try to get filename from server headers first (most accurate)
+        header_name = head_filename(http_session, video_url, args.verbose) if video_url else None
+        if header_name:
+            out_name = sanitize_filename(header_name)
+        else:
+            # Fall back to title from player_response or the file ID
+            base = video_title if video_title else args.video_id
+            base = sanitize_filename(base or 'video') or 'video'
+            ext = container_hint or 'mp4'
+            out_name = f"{base}.{ext}"
+
+    # If user provided a name without extension and we know the container, append it
+    if out_name and container_hint:
+        root, ext = os.path.splitext(out_name)
+        if not ext:
+            out_name = f"{root}.{container_hint}"
 
     if not video_url:
         print("Unable to retrieve the video URL. Ensure the video ID is correct and accessible.")

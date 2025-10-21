@@ -65,9 +65,16 @@ Alternatively, you can paste a raw Cookie header string:
 python gdrive_videoloader.py <video_id> --cookie "SID=...; HSID=...; SSID=..." -v
 ```
 
-## Try this on .venv
+# Try this on .venv
+
+## best quality (requires ffmpeg to merge)
 ```bash
-python gdrive_videoloader.py dgdfgdfg-gjh56uyh65u --cookies-file .\cookies.txt -v --quality progressive
+python .\gdrive_videoloader.py 1OgvBT5Mt62hAijYXp4q-kw144h3VCmro --cookies-file .\cookies.txt -v
+```
+
+## progressive-only (no ffmpeg needed; may be lower quality)
+```bash
+python .\gdrive_videoloader.py 1OgvBT5Mt62hAijYXp4q-kw144h3VCmro --cookies-file .\cookies.txt -v --quality progressive
 ```
 
 Notes:
