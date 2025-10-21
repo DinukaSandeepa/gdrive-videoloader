@@ -36,6 +36,40 @@ To download a video by its Google Drive ID:
 python gdrive_videoloader.py <video_id>
 ```
 
+### Accessing private files with cookies (login)
+
+If the video is not public or “anyone with link”, supply your Google cookies so the script can act as your logged-in browser session. You have three options:
+
+1) Use a cookies JSON file (e.g., exported by a Cookie Editor extension)
+
+```bash
+python gdrive_videoloader.py <video_id> --cookies-file cookies.json -v
+```
+
+2) Use a Netscape cookies.txt file (e.g., exported by a "cookies.txt" extension)
+
+```bash
+python gdrive_videoloader.py <video_id> --cookies-file cookies.txt -v
+```
+
+3) Pull cookies directly from your installed browser (requires browser-cookie3)
+
+```bash
+pip install browser-cookie3
+python gdrive_videoloader.py <video_id> --browser-cookies chrome -v
+```
+
+Alternatively, you can paste a raw Cookie header string:
+
+```bash
+python gdrive_videoloader.py <video_id> --cookie "SID=...; HSID=...; SSID=..." -v
+```
+
+Notes:
+- Ensure the account whose cookies you use has access to the file.
+- On Windows, browser-cookie3 reads your profile’s encrypted cookie store; run as the same user.
+- If Google still returns an error, refresh cookies (re-export) and make sure they include the main Google auth cookies (e.g., SID/HSID/SSID) and drive.google.com cookies.
+
 ### Options
 
 | Parameter                | Description                                                       | Default Value         |
@@ -44,6 +78,9 @@ python gdrive_videoloader.py <video_id>
 | `-o`, `--output`         | Custom output file name for the downloaded video.                | Video name in GDrive  |
 | `-c`, `--chunk_size`     | Chunk size (in bytes) for downloading the video.                 | 1024 bytes            |
 | `-v`, `--verbose`        | Enable verbose mode for detailed logs.                           | Disabled              |
+| `--cookies-file`         | Path to cookies file (JSON or Netscape cookies.txt).             | None                 |
+| `--browser-cookies`      | Load cookies from an installed browser (chrome, edge, firefox, brave, opera, vivaldi, any). | None |
+| `--cookie`               | Raw Cookie header string (e.g., "SID=...; HSID=...").           | None                 |
 | `--version`              | Display the script version.                                      | N/A                   |
 | `-h`, `--help`           | Display the help message.                                        | N/A                   |
 
