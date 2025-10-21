@@ -65,6 +65,11 @@ Alternatively, you can paste a raw Cookie header string:
 python gdrive_videoloader.py <video_id> --cookie "SID=...; HSID=...; SSID=..." -v
 ```
 
+## Try this on .venv
+```bash
+python gdrive_videoloader.py dgdfgdfg-gjh56uyh65u --cookies-file .\cookies.txt -v --quality progressive
+```
+
 Notes:
 - Ensure the account whose cookies you use has access to the file.
 - On Windows, browser-cookie3 reads your profile’s encrypted cookie store; run as the same user.
